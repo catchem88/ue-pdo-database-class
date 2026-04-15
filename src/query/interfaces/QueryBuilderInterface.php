@@ -93,6 +93,11 @@ interface QueryBuilderInterface
     public function getValue(): mixed;
 
     /**
+     * @return int
+     */
+    public function count(): int;
+
+    /**
      * Get the first row ordered by the specified field.
      *
      * @param string|array<int|string, string>|RawValue $orderByField Field(s) to order by (default: 'id')

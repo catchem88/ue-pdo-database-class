@@ -610,8 +610,33 @@ class SelectQueryBuilder implements SelectQueryBuilderInterface
     }
 
     /**
-     * Add ORDER BY clause.
+     * Execute SELECT COUNT(*) and return the result.
      *
+     * @return int
+     */
+    public function count(): int
+    {
+        // Save current query state
+        $savedSelect = $this->select;
+        $savedOrder = $this->order;
+        $savedOffset = $this->offset;
+
+        // Set count state
+        $this->select = ['COUNT(*)'];
+        $this->order = [];
+        $this->offset = null;
+
+        $result = (int)($this->getValue() ?? 0);
+
+        // Restore original query state
+        $this->select = $savedSelect;
+        $this->order = $savedOrder;
+        $this->offset = $savedOffset;
+
+        return $result;
+    }
+
+    /**
      * @param string|array<int|string, string>|RawValue $expr The expression(s) to order by.
      *                                                        - string: 'column' or 'column ASC' or 'column1 ASC, column2 DESC'
      *                                                        - array: ['column1', 'column2'] or ['column1' => 'ASC', 'column2' => 'DESC']

@@ -57,6 +57,13 @@ interface SelectQueryBuilderInterface
     public function getValue(): mixed;
 
     /**
+     * Execute SELECT COUNT(*) and return the result.
+     *
+     * @return int
+     */
+    public function count(): int;
+
+    /**
      * Add ORDER BY clause.
      *
      * @param string|array<int|string, string>|RawValue $expr The expression(s) to order by.

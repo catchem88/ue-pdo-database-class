@@ -667,6 +667,8 @@ class ConditionBuilder implements ConditionBuilderInterface
         string $operator,
         string $cond
     ): static {
+        $opUpper = $this->normalizeOperator($operator);
+
         // Handle logical grouping via Closure
         if ($exprOrColumn instanceof \Closure) {
             $instance = new QueryBuilder($this->connection, $this->prefix ?? '');
@@ -701,16 +703,16 @@ class ConditionBuilder implements ConditionBuilderInterface
                     } else {
                         // Just a value - add column and operator
                         $this->{$prop}[] = [
-                            'sql' => "{$exprQuoted} {$operator} {$resolved}",
+                            'sql' => "{$exprQuoted} {$opUpper} {$resolved}",
                             'cond' => $cond,
                         ];
                     }
                 } elseif (is_array($value)) {
                     $this->parameterManager->addParam(trim($val, ':'), $value[trim($val, ':')] ?? null);
-                    $this->{$prop}[] = ['sql' => "{$exprQuoted} {$operator} {$val}", 'cond' => $cond];
+                    $this->{$prop}[] = ['sql' => "{$exprQuoted} {$opUpper} {$val}", 'cond' => $cond];
                 } else {
                     $ph = $this->parameterManager->addParam((string)$col, $val);
-                    $this->{$prop}[] = ['sql' => "{$exprQuoted} {$operator} {$ph}", 'cond' => $cond];
+                    $this->{$prop}[] = ['sql' => "{$exprQuoted} {$opUpper} {$ph}", 'cond' => $cond];
                 }
             }
             return $this;
@@ -818,13 +820,13 @@ class ConditionBuilder implements ConditionBuilderInterface
 
             if ($value instanceof RawValue) {
                 $right = $this->resolveRawValue($value);
-                $this->{$prop}[] = ['sql' => "{$left} {$operator} {$right}", 'cond' => $cond];
+                $this->{$prop}[] = ['sql' => "{$left} {$opUpper} {$right}", 'cond' => $cond];
                 return $this;
             }
 
             // Inline literal on the right side to avoid driver-specific parameter casting issues
             $right = $this->literalFromValue($value);
-            $this->{$prop}[] = ['sql' => "{$left} {$operator} {$right}", 'cond' => $cond];
+            $this->{$prop}[] = ['sql' => "{$left} {$opUpper} {$right}", 'cond' => $cond];
             return $this;
         }
 
@@ -897,12 +899,12 @@ class ConditionBuilder implements ConditionBuilderInterface
                 // For external references in RawValue, they should be used as raw SQL without quotes
                 // formatColumnForComparison is only needed for Oracle CLOB compatibility, but for RawValue
                 // we preserve the raw SQL as-is since it's explicitly marked as raw
-                $this->{$prop}[] = ['sql' => "{$columnForComparison} {$operator} {$right}", 'cond' => $cond];
+                $this->{$prop}[] = ['sql' => "{$columnForComparison} {$opUpper} {$right}", 'cond' => $cond];
                 return $this;
             }
 
             $ph = $this->parameterManager->addParam((string)$exprOrColumn, $value);
-            $this->{$prop}[] = ['sql' => "{$columnForComparison} {$operator} {$ph}", 'cond' => $cond];
+            $this->{$prop}[] = ['sql' => "{$columnForComparison} {$opUpper} {$ph}", 'cond' => $cond];
             return $this;
         }
 
@@ -923,11 +925,10 @@ class ConditionBuilder implements ConditionBuilderInterface
             $subSql = $this->parameterManager->replacePlaceholdersInSql($sub['sql'], $map);
             // Apply formatColumnForComparison for CLOB compatibility (e.g., Oracle)
             $columnForComparison = $this->dialect->formatColumnForComparison($exprQuoted);
-            $this->{$prop}[] = ['sql' => "{$columnForComparison} {$operator} ({$subSql})", 'cond' => $cond];
+            $this->{$prop}[] = ['sql' => "{$columnForComparison} {$opUpper} ({$subSql})", 'cond' => $cond];
             return $this;
         }
 
-        $opUpper = $this->normalizeOperator($operator);
         // support IN / NOT IN with an array of values
         if (($opUpper === QueryConstants::OP_IN || $opUpper === QueryConstants::OP_NOT_IN) && is_array($value)) {
             if (empty($value)) {
@@ -1054,7 +1055,7 @@ class ConditionBuilder implements ConditionBuilderInterface
                         $resolved = $externalRefFormatted;
                     }
                     $this->{$prop}[] = [
-                        'sql' => "{$columnForComparison} {$operator} {$resolved}",
+                        'sql' => "{$columnForComparison} {$opUpper} {$resolved}",
                         'cond' => $cond,
                     ];
                 }
@@ -1063,7 +1064,7 @@ class ConditionBuilder implements ConditionBuilderInterface
             // Format column for comparison (e.g., TO_CHAR() for Oracle CLOB)
             $columnForComparison = $this->dialect->formatColumnForComparison($exprQuoted);
             $ph = $this->parameterManager->addParam((string)$exprOrColumn, $value);
-            $this->{$prop}[] = ['sql' => "{$columnForComparison} {$operator} {$ph}", 'cond' => $cond];
+            $this->{$prop}[] = ['sql' => "{$columnForComparison} {$opUpper} {$ph}", 'cond' => $cond];
         }
 
         return $this;
@@ -1096,8 +1097,17 @@ class ConditionBuilder implements ConditionBuilderInterface
      */
     protected function normalizeOperator(string $operator): string
     {
-        return strtoupper(trim($operator));
-    }
+		$operator = strtoupper(trim($operator));
+
+		if ($operator === 'ILIKE') {
+			$driver = $this->connection->getDriverName();
+			if ($driver === 'mysql' || $driver === 'mariadb') {
+				return 'LIKE';
+			}
+		}
+
+		return $operator;
+	}
 
     /**
      * Convert a PHP value into a safe SQL literal.

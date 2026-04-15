@@ -1034,6 +1034,30 @@ class QueryBuilder implements QueryBuilderInterface
     }
 
     /**
+     * Execute SELECT statement and return total count.
+     *
+     * @return int
+     * @throws \PDOException
+     */
+    public function count(): int
+    {
+        $this->applyGlobalScopes();
+        $originalConnection = $this->switchToReadConnection();
+
+        try {
+            $this->integrateJsonSelectionsAndOrders();
+
+            if ($this->cteManager !== null) {
+                $this->selectQueryBuilder->setCteManager($this->cteManager);
+            }
+
+            return $this->selectQueryBuilder->count();
+        } finally {
+            $this->restoreConnection($originalConnection);
+        }
+    }
+
+    /**
      * Get the first row ordered by the specified field.
      *
      * This is an alias for orderBy($orderByField, 'ASC')->limit(1)->getOne().
