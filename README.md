@@ -1,3 +1,10 @@
+A fork of the original PDOdb by tommyknocker
+
+Changes:
+
+Added `count()` method
+Operator "ILIKE" will be translated to "LIKE" for MySQL / MariaDB
+
 # PDOdb
 
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-blue.svg)](https://php.net)
