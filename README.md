@@ -1,9 +1,8 @@
 A fork of the original PDOdb by tommyknocker
 
-Changes:
-
-Added `count()` method
-Operator "ILIKE" will be translated to "LIKE" for MySQL / MariaDB
+**Changes:**
+- Added `count()` method
+- Operator "ILIKE" will be translated to "LIKE" for MySQL / MariaDB
 
 # PDOdb
 
